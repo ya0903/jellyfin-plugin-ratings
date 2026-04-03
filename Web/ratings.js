@@ -1108,7 +1108,7 @@
             // Initialize buttons in order: search first, then others
             this.initSearchField();
             this.initNotificationToggle();
-            this.initRequestButtonWithRetry();
+            // Request media UI intentionally disabled
 
             // Initialize latest media button (replaces sync play)
             this.initLatestMediaButton();
@@ -3311,23 +3311,35 @@
                     bottom: 100%;
                     left: 0;
                     z-index: 100;
-                    background: rgba(0, 0, 0, 0.6);
+                    background: rgba(0, 0, 0, 0.7);
                     border-radius: 6px;
-                    padding: 0.3em 0.6em;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 0.15em;
+                    padding: 0.25em;
                     pointer-events: auto;
                 }
 
-                .ratings-plugin-star {
-                    font-size: 1.6em;
+                .ratings-plugin-trigger {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4em;
+                    padding: 0.25em 0.55em;
+                    border-radius: 999px;
+                    border: 1px solid rgba(255, 215, 0, 0.35);
+                    background: rgba(20, 20, 20, 0.9);
+                    color: #fff;
+                    cursor: pointer;
+                    font-size: 0.95em;
+                    font-weight: 600;
+                    line-height: 1;
+                }
+
+                .ratings-plugin-trigger-star {
+                    color: #ffd700;
+                    font-size: 1.15em;
                 }
 
                 @media (min-width: 1200px) {
-                    .ratings-plugin-star {
-                        font-size: 1.8em;
+                    .ratings-plugin-trigger {
+                        font-size: 1em;
                     }
                 }
 
@@ -3338,48 +3350,30 @@
                     }
                 }
                 @media (max-width: 768px) {
-                    .ratings-plugin-star {
-                        font-size: 1.3em;
+                    .ratings-plugin-trigger {
+                        font-size: 0.85em;
                     }
                 }
 
                 @media (max-width: 480px) {
-                    .ratings-plugin-star {
-                        font-size: 1em;
-                    }
-                    .ratings-plugin-stats {
-                        font-size: 0.8em;
-                    }
-                    .ratings-plugin-stars {
-                        gap: 0.05em;
-                        flex-wrap: nowrap !important;
-                    }
                     .ratings-plugin-container {
-                        padding: 0.2em 0.4em;
-                        gap: 0.1em;
+                        padding: 0.2em;
                         left: 58% !important;
                     }
                 }
 
-                .ratings-plugin-title {
-                    font-size: 1.2em;
-                    font-weight: 500;
-                    margin-bottom: 0.5em;
-                    color: #fff;
-                }
-
-                .ratings-plugin-stars {
+                .ratings-plugin-panel-stars {
                     display: flex;
-                    flex-wrap: wrap;
                     justify-content: center;
                     align-items: center;
                     gap: 0.25em;
-                    position: relative;
+                    margin-bottom: 0.45em;
                 }
 
                 .ratings-plugin-star {
                     cursor: pointer;
                     color: #555;
+                    font-size: 1.35em;
                     transition: all 0.2s ease;
                     user-select: none;
                 }
@@ -3407,26 +3401,34 @@
                     margin-left: 0.5em;
                 }
 
-                .ratings-plugin-popup {
+                .ratings-plugin-panel {
                     position: absolute;
-                    bottom: 100%;
-                    left: 0;
+                    top: calc(100% + 0.35em);
+                    right: 0;
                     background: rgba(20, 20, 20, 0.98);
                     border: 1px solid #444;
                     border-radius: 8px;
-                    padding: 1em;
+                    padding: 0.8em;
                     min-width: 250px;
                     max-width: 400px;
                     max-height: 400px;
                     overflow-y: auto;
                     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
                     z-index: 10000;
-                    margin-bottom: 0.5em;
                     display: none;
                 }
 
-                .ratings-plugin-popup.visible {
+                .ratings-plugin-panel.visible {
                     display: block;
+                }
+
+                .ratings-plugin-popup {
+                    position: static;
+                    background: rgba(0, 0, 0, 0.25);
+                    border: 1px solid #333;
+                    border-radius: 8px;
+                    padding: 0.6em;
+                    margin-top: 0.55em;
                 }
 
                 .ratings-plugin-popup-title {
@@ -11328,17 +11330,23 @@
             container.className = 'ratings-plugin-container';
 
             container.innerHTML = `
-                <div class="ratings-plugin-stars" id="ratingsPluginStars">
-                    ${this.generateStars()}
+                <button class="ratings-plugin-trigger" id="ratingsPluginTrigger" type="button">
+                    <span class="ratings-plugin-trigger-star">★</span>
+                    <span id="ratingsPluginSummary">--</span>
+                </button>
+                <div class="ratings-plugin-panel" id="ratingsPluginPanel">
+                    <div class="ratings-plugin-panel-stars" id="ratingsPluginStars">
+                        ${this.generateStars()}
+                    </div>
+                    <div class="ratings-plugin-stats" id="ratingsPluginStats">
+                        <span class="ratings-plugin-loading">Loading ratings...</span>
+                    </div>
                     <div class="ratings-plugin-popup" id="ratingsPluginPopup">
                         <div class="ratings-plugin-popup-title">User Ratings</div>
                         <ul class="ratings-plugin-popup-list" id="ratingsPluginPopupList">
                             <li class="ratings-plugin-popup-empty">Loading...</li>
                         </ul>
                     </div>
-                </div>
-                <div class="ratings-plugin-stats" id="ratingsPluginStats">
-                    <span class="ratings-plugin-loading">Loading ratings...</span>
                 </div>
             `;
 
@@ -11416,8 +11424,9 @@
             const stars = visiblePage
                 ? visiblePage.querySelectorAll('.ratings-plugin-star')
                 : document.querySelectorAll('.ratings-plugin-star');
-            const popup = this.queryInVisiblePage('#ratingsPluginPopup');
             const starsContainer = this.queryInVisiblePage('#ratingsPluginStars');
+            const trigger = this.queryInVisiblePage('#ratingsPluginTrigger');
+            const panel = this.queryInVisiblePage('#ratingsPluginPanel');
 
             stars.forEach(star => {
                 star.addEventListener('click', () => {
@@ -11436,18 +11445,33 @@
                 });
             });
 
-            starsContainer.addEventListener('mouseleave', () => {
-                this.loadRatings(itemId); // Refresh to show actual rating
-            });
+            if (starsContainer) {
+                starsContainer.addEventListener('mouseleave', () => {
+                    this.loadRatings(itemId); // Refresh to show actual rating
+                });
+            }
 
-            // Show popup on hover over stars container
-            starsContainer.addEventListener('mouseenter', () => {
-                this.showDetailedRatings(itemId);
-            });
+            if (trigger && panel) {
+                trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    panel.classList.toggle('visible');
+                    if (panel.classList.contains('visible')) {
+                        this.showDetailedRatings(itemId);
+                    }
+                });
 
-            starsContainer.addEventListener('mouseleave', () => {
-                popup.classList.remove('visible');
-            });
+                document.addEventListener('click', (e) => {
+                    if (!panel.classList.contains('visible')) return;
+                    if (!containerContainsTarget(panel, e.target) && !containerContainsTarget(trigger, e.target)) {
+                        panel.classList.remove('visible');
+                    }
+                });
+            }
+
+            function containerContainsTarget(element, target) {
+                return element === target || element.contains(target);
+            }
         },
 
         /**
@@ -11473,6 +11497,7 @@
         loadRatings: function (itemId) {
             const self = this;
             const statsElement = this.queryInVisiblePage('#ratingsPluginStats');
+            const summaryElement = this.queryInVisiblePage('#ratingsPluginSummary');
 
 
             // Build URL with authentication
@@ -11516,6 +11541,11 @@
                     // For collections (no UserRating), show average in stars; otherwise show user's rating
                     var displayRating = stats.UserRating || (stats.TotalRatings > 0 ? Math.round(stats.AverageRating) : 0);
                     self.updateStarDisplay(displayRating);
+                    if (summaryElement) {
+                        summaryElement.textContent = stats.TotalRatings > 0
+                            ? `${stats.AverageRating.toFixed(1)} (${stats.TotalRatings})`
+                            : 'No ratings';
+                    }
 
                     let statsHtml = '';
                     if (stats.TotalRatings > 0) {
@@ -11532,6 +11562,9 @@
                     }
                 })
                 .catch(err => {
+                    if (summaryElement) {
+                        summaryElement.textContent = 'Unavailable';
+                    }
                     if (statsElement) {
                         statsElement.innerHTML = 'Error loading ratings';
                     }
@@ -11684,11 +11717,8 @@
          * Show detailed ratings popup
          */
         showDetailedRatings: function (itemId) {
-            const popup = this.queryInVisiblePage('#ratingsPluginPopup');
             const popupList = this.queryInVisiblePage('#ratingsPluginPopupList');
-            if (!popup || !popupList) return;
-
-            popup.classList.add('visible');
+            if (!popupList) return;
             popupList.innerHTML = '<li class="ratings-plugin-popup-empty">Loading...</li>';
 
             ApiClient.getJSON(ApiClient.getUrl(`Ratings/Items/${itemId}/DetailedRatings`))
